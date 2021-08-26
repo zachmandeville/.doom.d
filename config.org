@@ -1,0 +1,170 @@
+#+TITLE: Config
+* Setup Additional packages
+** ii-packages
+#+begin_src elisp :tangle packages.el
+(package! ii-utils :recipe
+  (:host github
+   :branch "master"
+   :repo "ii/ii-utils"
+   :files ("*.el")))
+(package! ii-pair :recipe
+  (:host github
+   :branch "main"
+   :repo "humacs/ii-pair"
+   :files ("*.el")))
+#+end_src
+** upstream
+#+begin_src elisp :tangle packages.el
+(package! sql)
+(package! ob-sql-mode)
+(package! ob-tmux)
+(package! ox-gfm) ; org dispatch github flavoured markdown
+(package! kubernetes)
+(package! kubernetes-evil)
+(package! exec-path-from-shell)
+(package! graphviz-dot-mode)
+(package! feature-mode)
+#+end_src
+
+[[https://github.com/sshaw/git-link][git-link]] provides a handy way to reference lines of code within org docs, by
+storing their full github link. This makes it easier to follow links in the org
+document when it is read on github.
+#+begin_src elisp :tangle packages.el
+(package! git-link)
+#+end_src
+* Get Path
+this needs to happen first thing to make the reest of the org file load.
+#+begin_src elisp
+(exec-path-from-shell-initialize)
+#+end_src
+* Personal Info
+Some functionality uses this to identify you, e.g. GPG configuration, email
+clients, file templates and snippets.
+#+begin_src elisp
+(setq user-full-name "Zach Mandeville"
+      user-mail-address "zz@ii.coop")
+#+end_src
+* Ergonomics
+keybindings and navigation and such.
+** Set local leader to comma
+#+begin_src elisp
+(setq doom-localleader-key ",")
+#+end_src
+* Appearance
+** Fonts
+#+begin_src elisp
+(setq doom-font (font-spec :family "Recursive Mono Casual Static" :size 16 :weight 'light)
+     ;; )(font-spec :family "Source Code Pro" :size 8 :weight 'semi-light)
+     doom-variable-pitch-font (font-spec :family "Recursive Sans Casual Static" :size 16)
+     doom-unicode-font (font-spec :family "Recursive Mono Casual Static" :size 16))
+#+end_src
+** Theme
+There are two ways to load a theme. Both assume the theme is installed and
+available. You can either set `doom-theme' or manually load a theme with the
+`load-theme' function. This is the default:
+#+begin_src elisp
+(setq doom-theme 'doom-one)
+#+end_src
+** LSP Behaviour
+This brings over the lsp behaviour of spacemacs, so working with code feels consistent across emacs..
+#+NAME: Setup LSP-UI
+#+BEGIN_SRC elisp
+(use-package! lsp-ui
+:config
+          (setq lsp-navigation 'both)
+          (setq lsp-ui-doc-enable t)
+          (setq lsp-ui-doc-position 'top)
+          (setq lsp-ui-doc-alignment 'frame)
+          (setq lsp-ui-doc-use-childframe t)
+          (setq lsp-ui-doc-use-webkit t)
+          (setq lsp-ui-doc-delay 0.2)
+          (setq lsp-ui-doc-include-signature nil)
+          (setq lsp-ui-sideline-show-symbol t)
+          (setq lsp-ui-remap-xref-keybindings t)
+          (setq lsp-ui-sideline-enable t)
+          (setq lsp-prefer-flymake nil)
+          (setq lsp-print-io t))
+#+END_SRC
+** Misc
+This determines the style of line numbers in effect. If set to `nil', line
+numbers are disabled. For relative line numbers, set this to `relative'.
+#+begin_src elisp
+(setq display-line-numbers-type t)
+#+end_src
+I also want a standard indent of 2.
+#+begin_src elisp
+(setq standard-indent 2)
+#+end_src
+and to start up with a big-as window
+#+begin_src elisp
+(add-to-list 'initial-frame-alist '(fullscreen . maximized))
+#+end_src
+
+** ASCII colours on org shell results
+#+BEGIN_SRC elisp
+(defun ek/babel-ansi ()
+  (when-let ((beg (org-babel-where-is-src-block-result nil nil)))
+    (save-excursion
+      (goto-char beg)
+      (when (looking-at org-babel-result-regexp)
+        (let ((end (org-babel-result-end))
+              (ansi-color-context-region nil))
+          (ansi-color-apply-on-region beg end))))))
+(add-hook 'org-babel-after-execute-hook 'ek/babel-ansi)
+#+END_SRC
+* Org
+#+begin_src elisp
+(setq org-directory "~/org/")
+(setq org-roam-directory "~/org/roam/")
+#+end_src
+
+* Languages
+** Web
+auto-closing tags works different if you are in a terminal or gui.  We want consistent behaviour when editing any sort of web doc.
+I also like it to create a closing tag when i've starteed my opening tag, which is auto-close-style 2
+#+BEGIN_SRC elisp
+(setq web-mode-enable-auto-closing t)
+(setq-hook! web-mode web-mode-auto-close-style 2)
+#+END_SRC
+* Literate!
+** SQL
+#+BEGIN_SRC elisp
+(setq org-babel-default-header-args:sql-mode
+      '((:results . "replace code")
+        (:product . "postgres")
+        (:wrap . "SRC example")))
+#+END_SRC
+** Go
+#+BEGIN_SRC elisp
+(setq org-babel-default-header-args:go
+      '((:results . "replace code")
+        (:wrap . "SRC example")))
+#+END_SRC
+** Pairing
+#+BEGIN_SRC elisp
+(use-package! graphviz-dot-mode)
+(use-package! sql)
+(use-package! ii-utils)
+(use-package! ii-pair)
+(after! ii-pair (osc52-set-cut-function))
+#+END_SRC
+** Exporting
+#+BEGIN_SRC elisp
+(require 'ox-gfm)
+#+END_SRC
+
+** Sane Org Defaults
+In addition to the org defaults, we wanna make sure our exports include results, but that we dont' try to run all our tamte commands again.
+#+BEGIN_SRC elisp
+(setq org-babel-default-header-args
+      '((:session . "none")
+        (:results . "replace code")
+        (:comments . "org")
+        (:exports . "both")
+        (:eval . "never-export")
+        (:tangle . "no")))
+
+(setq org-babel-default-header-args:shell
+      '((:results . "output code verbatim replace")
+        (:wrap . "example")))
+#+END_SRC
